@@ -1,46 +1,68 @@
 /*
  * Exercise2.c
  *
- * Created: 11/22/2013 2:31:27 PM
+ * Created: 12/7/2013 9:08:25 PM
  *  Author: Mohamed Tarek
- */
- 
+ */ 
+
 #ifndef F_CPU
 #define F_CPU 1000000UL // or whatever may be your frequency
 #endif
 
 #include <avr/io.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+
+volatile unsigned char g_Interrupt_Flag = 0;
+
+/* Externel INT1 Interrupt Service Routine */
+ISR(INT1_vect)
+{
+	g_Interrupt_Flag = 1;		
+}
+
+/* External INT1 enable and configuration function */
+void INT1_Init(void)
+{
+	cli(); // Disable interrupts by clearing I-bit
+	GICR |= (1<<INT1); //enable external interrupt pin INT1
+	MCUCR |= (1<<ISC11); // Trigger INT1 with the falling edge
+	sei(); // Enable interrupts by setting I-bit
+}
 
 int main(void)
 {
-	DDRB = DDRB & (~(1<<PB0)); // configure pin 0 of PORTB to be input pin
-	DDRB = DDRB & (~(1<<PB1)); // configure pin 1 of PORTB to be input pin
-	DDRC = DDRC | (1<<PC0);    // configure pin 0 of PORTC to be output pin
-	DDRC = DDRC | (1<<PC1);    // configure pin 1 of PORTC to be output pin
+	DDRC = 0xFF; //configure all PORTC pins as output pins
+	PORTC = 0x01; //first led is on at the beginning (Positive Logic configuration)
 	
-	//initialize leds
-	PORTC = PORTC & (~(1<<PC0));  // led1 is off at the beginning
-	PORTC = PORTC & (~(1<<PC1));  // led2 is off at the beginning
+	DDRD  &= (~(1<<PD3)); //configure INT1/PD3 as input pin 
+	PORTD |= (1<<PD3); //enable built in pull up resistor of INT1/PD3 pin.
+	
+	INT1_Init(); // enable and configure external INT1
+	
+	unsigned char Loop_idx;
 	
     while(1)
     {
-		//check if the first switch is pressed
-        if(PINB & (1<<PB0))
-		{ 
-			PORTC = PORTC | (1<<PC0); // turn on led1
-			PORTC = PORTC & (~(1<<PC1));   // turn off led2   
-		}		
-		
-		//check if the second switch is pressed	
-		else if(PINB & (1<<PB1))
+		if(g_Interrupt_Flag == 0)
 		{
-			PORTC = PORTC & (~(1<<PC0));   // turn off led1 
-			PORTC = PORTC | (1<<PC1); // turn on led2
+			_delay_ms(500);
+			PORTC = (PORTC<<1); //every time only one led is ON
+			if(PORTC == 0x00)
+			{
+				PORTC = 0x01;
+			}
 		}
 		else
 		{
-			PORTC = PORTC & (~(1<<PC0));   // turn off led1
-			PORTC = PORTC & (~(1<<PC1));   // turn off led2
-		}  
-	} 
+			for(Loop_idx = 0 ; Loop_idx < 5 ; Loop_idx++)
+			{
+				PORTC = 0xFF;
+				_delay_ms(500);
+				PORTC = 0x00;
+				_delay_ms(500);
+			}
+			g_Interrupt_Flag = 0; //after finish make flag = 0 again 
+		}							
+	}					
 }
