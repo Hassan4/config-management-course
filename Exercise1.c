@@ -1,26 +1,39 @@
 /*
  * Exercise1.c
  *
- * Created: 11/22/2013 2:17:05 PM
+ * Created: 3/3/2014 9:45:25 PM
  *  Author: Mohamed Tarek
  */ 
 
-#ifndef F_CPU
-#define F_CPU 8000000UL // or whatever may be your frequency
-#endif
-
 #include <avr/io.h>
-#include <util/delay.h> // to use delay function
+#include <avr/interrupt.h>
+
+/* External INT0 Interrupt Service Routine */
+ISR(INT0_vect)
+{
+	PORTC = PORTC ^ (1<<PC0); //toggle led state		
+}
+
+/* External INT0 enable and configuration function */
+void INT0_Init(void)
+{
+	cli(); // Disable interrupts by clearing I-bit
+	GICR |= (1<<INT0); //enable external interrupt pin INT0
+	MCUCR |= (1<<ISC01); // Trigger INT0 with the falling edge
+	sei(); // Enable interrupts ny setting I-bit
+}
 
 int main(void)
 {
-	DDRD = DDRD | (1<<PD6); //configure pin 3 in PORTD as output pin
+	DDRC  = DDRC | (1<<PC0); //configure pin PC0 in PORTC as output pin
+	PORTC = PORTC | (1<<PC0); //initialization Led is off at the beginning(Negative Logic)
+	
+	DDRD  &= (~(1<<PD2)); //configure INT0/PD2 as input pin
+	PORTD |= (1<<PD2); //enable built in pull up resistor of INT0/PD2 pin.
+	INT0_Init(); // enable external INT0
 	
     while(1)
     {
-		PORTD = PORTD & (~(1<<PD6)); // LED ON
-		_delay_ms(1000);
-		PORTD = PORTD | (1<<PD6);    // LED OFF
-		_delay_ms(1000);
-    }
+							
+	}					
 }

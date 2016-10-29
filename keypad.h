@@ -11,7 +11,7 @@
 #include "std_types.h"
 #include "micro_config.h"
 
-#define N_col 4
+#define N_col 3
 #define N_row 4
 
 /* Keypad Port Configurations */

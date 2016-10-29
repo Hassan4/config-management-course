@@ -1,42 +1,55 @@
 /*
  * Challenge1.c
  *
- * Created: 11/22/2013 2:43:10 PM
+ * Created: 1/21/2014 11:29:49 PM
  *  Author: Mohamed Tarek
  */ 
+#ifndef F_CPU
+#define F_CPU 8000000UL
+#endif
 
-/* clock is 1Mhz by default */
 
 #include <avr/io.h>
-#include <util/delay.h>
+#include <avr/interrupt.h>
+
+#define NUMBER_OF_OVERFLOWS_PER_SECOND 123
+
+unsigned char tick=0;
+
+/* with clock=1Mhz and prescale F_CPU/256 every count will take 32 us
+ * so put initial timer counter=0  0 --> 255 (255 * 32us = 8.16 ms per overflow)
+ * so we need timer to overflow 123 times to get a 1 second 
+ */
+ 
+void Timer_init_Normal_Mode(void){
+	TCNT0 = 0; //timer initial value
+	TIMSK = (1<<TOIE0); //enable overflow interrupt
+	/* configure the timer
+	 * 1. Non PWM mode FOC0=1
+	 * 2. Normal Mode WGM01=0 & WGM00=0
+	 * 3. Normal Mode COM00=0 & COM01=0 
+	 * 4. clock = F_CPU/256 CS00=0 CS01=0 CS02=1
+	 */
+	TCCR0 = (1<<FOC0) | (1<<CS02);
+}
+
+ISR(TIMER0_OVF_vect){
+	tick++;
+	if(tick == NUMBER_OF_OVERFLOWS_PER_SECOND){
+		tick=0;
+		if(PORTC == 9)	PORTC=0;
+		else PORTC++;
+	}	
+}
 
 int main(void)
 {
-	DDRA = DDRA & (~(1<<PA0)); // configure pin 0 of PORTA to be input pin
-	DDRA = DDRA & (~(1<<PA1)); // configure pin 0 of PORTA to be input pin
-	DDRD = 0xFF; // configure all pins of PORTD as output pins
-	
-	// initialize the 7-segment
-	PORTD = 0;
-	
+	DDRC = 0xFF; //configure all pins in PORTC as output pins.
+	PORTC = 0; //initialization 7-seg display zero at the beginning.
+	sei(); //enable global interrupts in MC.
+	Timer_init_Normal_Mode(); //start the timer.
     while(1)
-    {
-		if(PINA & (1<<PA0)){ // check if the first push button is pressed or not
-			_delay_ms(30);
-			//second check due to switch bouncing
-			if(PINA & (1<<PA0)){
-					if(PORTD != 9) PORTD++;	   
-			}
-			while(PINA & (1<<PA0)){}
-		}
-		
-		else if(PINA & (1<<PA1)){ // check if the second push button is pressed or not
-			_delay_ms(30);
-			//second check due to switch bouncing
-			if(PINA & (1<<PA1)){
-					if(PORTD != 0) PORTD--;	   
-			}
-			while(PINA & (1<<PA1)){}
-		}				       
+    {			
+       
     }
 }
